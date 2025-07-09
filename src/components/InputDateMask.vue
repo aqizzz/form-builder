@@ -22,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, watch, onMounted } from "vue";
 import Popover from "primevue/popover";
 import Button from "primevue/button";
 import DatePicker from "primevue/datepicker";
@@ -131,6 +131,22 @@ const notifyValidity = () => {
     dateString.value
   );
 };
+
+watch(
+  () => inputModel.value,
+  (newVal) => {
+    if (!newVal || !isValid(newVal)) {
+      formattedDate.value = "";
+      selectedDate.value = null;
+      return;
+    }
+
+    // 更新显示的日期
+    formattedDate.value = formatDateToString(newVal);
+    selectedDate.value = newVal;
+  },
+  { immediate: true }
+);
 
 onMounted(() => {
   selectedDate.value = inputModel.value ?? new Date();

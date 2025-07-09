@@ -16,5 +16,6 @@ app.use(PrimeVue, {
       cssLayer: false,
     },
   },
+  autoFocus: false,
 });
 app.mount("#app");

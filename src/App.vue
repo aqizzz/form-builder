@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import FormBuilder from "@/components/FormBuilder.vue";
 import Card from "primevue/card";
+import { z } from "zod";
 
 // 定义表单字段类型
 export interface FormItem {
@@ -11,14 +12,22 @@ export interface FormItem {
   layout?: string;
   placeholder?: string;
   required?: boolean;
-  validation?: {
-    min?: number;
-    max?: number;
+  visibleCondition?: {
+    //处于什么条件显示本字段
+    sourceField: string; // 被依赖字段名
+    operator: ">" | "<" | "===" | "!==" | "includes" | "not-includes"; //操作
+    referenceValue: any; //参照物
+  };
+  calculationCondition?: {
+    //是否改变其他字段的值
+    targetField: string; // 将要改变的字段名
+    operator: "+" | "-" | "*" | "/"; //操作
+    operand: number; //差值
   };
   options?: Array<{ label: string; value: string | number }>;
   checkboxLabel?: string;
-  maxSelectedLabels?: number;
-  rows?: number;
+  maxSelectedLabels?: number; // For multiselection
+  rows?: number; //For textarea
 }
 
 // 定义表单数据类型
@@ -45,10 +54,6 @@ const formItems = ref<FormItem[]>([
     layout: "full-width",
     placeholder: "请输入您的姓名",
     required: true,
-    validation: {
-      min: 2,
-      max: 50,
-    },
   },
   {
     name: "email",
@@ -65,10 +70,6 @@ const formItems = ref<FormItem[]>([
     placeholder: "请输入您的年龄",
     layout: "half-width",
     required: true,
-    validation: {
-      min: 1,
-      max: 120,
-    },
   },
   {
     name: "password",
@@ -77,9 +78,6 @@ const formItems = ref<FormItem[]>([
     placeholder: "请输入密码",
     layout: "half-width",
     required: true,
-    validation: {
-      min: 6,
-    },
   },
   {
     name: "gender",
@@ -123,6 +121,11 @@ const formItems = ref<FormItem[]>([
       { label: "编程", value: "coding" },
       { label: "摄影", value: "photography" },
     ],
+    visibleCondition: {
+      sourceField: "city",
+      operator: "includes",
+      referenceValue: "shanghai",
+    },
   },
   {
     name: "birthday",
@@ -130,6 +133,19 @@ const formItems = ref<FormItem[]>([
     label: "生日",
     layout: "third-width",
     placeholder: "请选择您的生日",
+    calculationCondition: {
+      targetField: "celebration",
+      operator: "+",
+      operand: 364,
+    },
+    required: false,
+  },
+  {
+    name: "celebration",
+    type: "date",
+    label: "庆祝日",
+    layout: "half-width",
+    placeholder: "请选择您的庆祝日",
     required: false,
   },
   {
@@ -137,10 +153,8 @@ const formItems = ref<FormItem[]>([
     type: "textarea",
     label: "个人简介",
     placeholder: "请简单介绍一下自己...",
+    layout: "half-width",
     required: false,
-    validation: {
-      max: 500,
-    },
   },
   {
     name: "agree",
@@ -151,35 +165,25 @@ const formItems = ref<FormItem[]>([
   },
 ]);
 
-// 表单数据
-const formData = ref<FormData>({
-  name: "",
-  email: "",
-  age: null,
-  password: "",
-  gender: "",
-  city: "",
-  hobbies: [],
-  birthday: null,
-  bio: "",
-  agree: false,
-});
-
-// 提交状态
-const isSubmitting = ref(false);
-
 const getInitialFormData = (): FormData => ({
   name: "",
   email: "",
-  age: null,
+  age: 0,
   password: "",
   gender: "",
   city: "",
   hobbies: [],
   birthday: null,
+  celebration: null,
   bio: "",
   agree: false,
 });
+
+// 表单数据
+const formData = ref<FormData>(getInitialFormData());
+
+// 提交状态
+const isSubmitting = ref(false);
 
 // 处理表单提交
 const handleSubmit = async (data: FormData) => {
@@ -200,11 +204,24 @@ const handleSubmit = async (data: FormData) => {
 };
 
 // 处理取消
-const handleCancel = () => {
-  if (confirm("确定要取消吗？未保存的数据将丢失。")) {
+const handleReset = () => {
+  if (confirm("确定要重置吗？未保存的数据将丢失。")) {
     formData.value = getInitialFormData();
   }
 };
+
+const formSchema = z.object({
+  name: z
+    .string({ required_error: "姓名不能为空" })
+    .min(2, { message: "姓名必须大于两个字符" }),
+  email: z
+    .string()
+    .refine(
+      (val) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(val),
+      "请输入有效的邮箱（示例：user@example.com）"
+    ),
+  age: z.number().min(18),
+});
 </script>
 
 <template>
@@ -223,8 +240,10 @@ const handleCancel = () => {
           v-model="formData"
           :isSubmitting="isSubmitting"
           submitLabel="保存信息"
+          resetLabel="重置信息"
+          :formSchema="formSchema"
           @submit="handleSubmit"
-          @cancel="handleCancel"
+          @reset="handleReset"
         />
       </template>
     </Card>

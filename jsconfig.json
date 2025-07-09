@@ -2,7 +2,9 @@
   "compilerOptions": {
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "moduleResolution": "bundler",
+    "module": "ES2015",
   },
   "exclude": ["node_modules", "dist"]
 }
