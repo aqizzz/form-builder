@@ -44,6 +44,72 @@ label {
   font-weight: 500;
 }
 
+.dynamic-form {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 0.5rem;
+  align-items: start;
+}
+
+.form-item {
+  min-width: 0; /* 防止内容溢出 */
+}
+
+/* 通过layout直接控制 */
+.full-width {
+  grid-column: span 12;
+}
+
+input,
+.p-inputtext,  /* PrimeVue输入框类名 */
+.p-dropdown,
+.p-inputnumber,
+.p-textarea,
+.p-multiselect,
+.p-select {
+  /* PrimeVue下拉框类名 */
+  width: 100%;
+  box-sizing: border-box; /* 包含padding和border */
+}
+
+/* 深度选择器强制覆盖 */
+:deep(.date-input-container) {
+  display: flex !important;
+  width: 100% !important;
+}
+
+:deep(.date-input-container .p-inputtext) {
+  flex: 1 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+:deep(.date-input-container .p-button) {
+  flex: none !important;
+  margin-left: 0.2rem !important;
+}
+
+.half-width {
+  grid-column: span 6;
+}
+
+.third-width {
+  grid-column: span 4;
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+  .dynamic-form {
+    grid-template-columns: 1fr; /* 单列布局 */
+  }
+
+  .full-width,
+  .half-width,
+  .third-width {
+    grid-column: span 1;
+  }
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
