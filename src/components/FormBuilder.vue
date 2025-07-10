@@ -13,9 +13,13 @@
       v-for="item in formItems"
       :key="item.name"
       :class="['form-item', item.layout || 'full-width']"
-      v-show="shouldShowItem(item, formData)"
+      v-show="!item.hide"
     >
-      <FormField :item="item" v-model="formData" />
+      <FormField
+        :item="item"
+        v-model="formData"
+        @value-change="handleValueChange"
+      />
       <Message
         v-if="item.name in $form && $form[item.name].invalid"
         severity="error"
@@ -46,7 +50,7 @@ import { Button, Message } from "primevue";
 import FormField from "./FormField.vue";
 import { zodResolver } from "@primevue/forms/resolvers/zod";
 import { type ZodSchema } from "zod";
-import type { Ref } from "vue";
+import { EmitItem } from "@/App.vue";
 
 const props = defineProps<{
   formItems: FormItem[];
@@ -61,6 +65,7 @@ const resolver = ref(zodResolver(props.formSchema));
 const emit = defineEmits<{
   (e: "submit", formData: FormData): void;
   (e: "reset"): void;
+  (e: "value-change", ItemData: EmitItem): void;
 }>();
 
 const handleReset = () => {
@@ -75,95 +80,7 @@ const onFormSubmit = (e: { valid: any }) => {
 
 const formData = defineModel<FormData>();
 
-const shouldShowItem = (item: FormItem, data: FormData): boolean => {
-  if (!item.visibleCondition) return true;
-
-  const { sourceField, operator, referenceValue } = item.visibleCondition;
-  const targetValue = data[sourceField];
-
-  switch (operator) {
-    case "===":
-      return targetValue === referenceValue;
-    case "!==":
-      return targetValue !== referenceValue;
-    case ">":
-      return typeof targetValue === "number" && targetValue > referenceValue;
-    case "<":
-      return typeof targetValue === "number" && targetValue < referenceValue;
-    case "includes":
-      return (
-        typeof targetValue === "string" && targetValue.includes(referenceValue)
-      );
-    case "not-includes":
-      return (
-        typeof targetValue === "string" && !targetValue.includes(referenceValue)
-      );
-    default:
-      return true;
-  }
+const handleValueChange = (emitItem: EmitItem) => {
+  emit("value-change", emitItem);
 };
-
-const useFieldCalculation = (
-  formItems: FormItem[],
-  formData: Ref<FormData>
-) => {
-  const caculatedItems = formItems
-    .filter((item) => item.calculationCondition)
-    .map((item) => ({
-      source: computed(() => formData.value[item.name]),
-      target: item.calculationCondition!.targetField,
-      operator: item.calculationCondition!.operator,
-      operand: item.calculationCondition!.operand,
-    }));
-
-  caculatedItems.forEach(({ source, target, operator, operand }) => {
-    watch(
-      source,
-      (newVal) => {
-        if (newVal == null) return;
-
-        const newValue = calculateValue(newVal, operator, operand);
-        if (shouldUpdate(formData.value[target], newValue)) {
-          formData.value[target] = newValue;
-        }
-      },
-      { immediate: true }
-    );
-  });
-};
-
-const calculateValue = (value: any, operator: string, operand: number) => {
-  let newValue: number;
-  if (value instanceof Date) {
-    const newDate = new Date(value);
-    newDate.setDate(newDate.getDate() + operand);
-    return newDate;
-  }
-  if (typeof value === "number") {
-    switch (operator) {
-      case "+":
-        newValue = value + operand;
-        break;
-      case "-":
-        newValue = value - operand;
-        break;
-      case "*":
-        newValue = value * operand;
-        break;
-      case "/":
-        newValue = operand !== 0 ? value / operand : value;
-        break;
-    }
-    return newValue;
-  }
-  return value;
-};
-
-const shouldUpdate = (current: any, newVal: any) => {
-  return current instanceof Date && newVal instanceof Date
-    ? current.getTime() !== newVal.getTime()
-    : current !== newVal;
-};
-
-useFieldCalculation(props.formItems, formData);
 </script>

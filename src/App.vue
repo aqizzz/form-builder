@@ -12,22 +12,11 @@ export interface FormItem {
   layout?: string;
   placeholder?: string;
   required?: boolean;
-  visibleCondition?: {
-    //处于什么条件显示本字段
-    sourceField: string; // 被依赖字段名
-    operator: ">" | "<" | "===" | "!==" | "includes" | "not-includes"; //操作
-    referenceValue: any; //参照物
-  };
-  calculationCondition?: {
-    //是否改变其他字段的值
-    targetField: string; // 将要改变的字段名
-    operator: "+" | "-" | "*" | "/"; //操作
-    operand: number; //差值
-  };
   options?: Array<{ label: string; value: string | number }>;
   checkboxLabel?: string;
   maxSelectedLabels?: number; // For multiselection
   rows?: number; //For textarea
+  hide?: boolean;
 }
 
 // 定义表单数据类型
@@ -38,11 +27,18 @@ export interface FormData {
   age: number | null;
   password?: string;
   gender?: string;
+  state?: string;
   city?: string;
+  region?: string;
   hobbies?: string[];
   birthday?: Date | null;
   bio?: string;
   agree?: boolean;
+}
+
+export interface EmitItem {
+  name: string;
+  value: any;
 }
 
 // 表单配置数据
@@ -91,19 +87,36 @@ const formItems = ref<FormItem[]>([
     ],
   },
   {
+    name: "state",
+    type: "select",
+    label: "省份",
+    placeholder: "请选择您所在的省份",
+    layout: "third-width",
+    required: true,
+    options: [
+      { label: "北京", value: "beijing" },
+      { label: "上海", value: "shanghai" },
+      { label: "广东", value: "guangdong" },
+      { label: "湖北", value: "hubei" },
+    ],
+  },
+  {
     name: "city",
     type: "select",
     label: "城市",
     placeholder: "请选择您所在的城市",
     layout: "third-width",
     required: true,
-    options: [
-      { label: "北京", value: "beijing" },
-      { label: "上海", value: "shanghai" },
-      { label: "广州", value: "guangzhou" },
-      { label: "深圳", value: "shenzhen" },
-      { label: "杭州", value: "hangzhou" },
-    ],
+    options: [],
+  },
+  {
+    name: "region",
+    type: "select",
+    label: "区域",
+    placeholder: "请选择您所在的区域",
+    layout: "third-width",
+    required: true,
+    options: [],
   },
   {
     name: "hobbies",
@@ -121,11 +134,6 @@ const formItems = ref<FormItem[]>([
       { label: "编程", value: "coding" },
       { label: "摄影", value: "photography" },
     ],
-    visibleCondition: {
-      sourceField: "city",
-      operator: "includes",
-      referenceValue: "shanghai",
-    },
   },
   {
     name: "birthday",
@@ -133,11 +141,6 @@ const formItems = ref<FormItem[]>([
     label: "生日",
     layout: "third-width",
     placeholder: "请选择您的生日",
-    calculationCondition: {
-      targetField: "celebration",
-      operator: "+",
-      operand: 364,
-    },
     required: false,
   },
   {
@@ -165,13 +168,32 @@ const formItems = ref<FormItem[]>([
   },
 ]);
 
+const cityOfGuangdong = [
+  { label: "广州", value: "guangzhou" },
+  { label: "深圳", value: "shenzhen" },
+  { label: "珠海", value: "zhuhai" },
+  { label: "佛山", value: "foshan" },
+  { label: "东莞", value: "dongguan" },
+];
+
+const regionOfGuangzhou = [
+  { label: "天河区", value: "tianhe" },
+  { label: "越秀区", value: "yuexiu" },
+  { label: "海珠区", value: "haizhu" },
+  { label: "荔湾区", value: "liwan" },
+];
+
+const cityOfShanghai = [{ label: "上海", value: "shanghai" }];
+
 const getInitialFormData = (): FormData => ({
   name: "",
   email: "",
   age: 0,
   password: "",
   gender: "",
+  state: "",
   city: "",
+  region: "",
   hobbies: [],
   birthday: null,
   celebration: null,
@@ -210,6 +232,54 @@ const handleReset = () => {
   }
 };
 
+const handleValueChange = (emitItem: EmitItem) => {
+  if (emitItem.name === "city") {
+    formItems.value = formItems.value.map((item) => {
+      if (item.name === "hobbies") {
+        return {
+          ...item,
+          hide: emitItem.value === "shanghai",
+        };
+      }
+      return item;
+    });
+  }
+
+  if (emitItem.name === "state") {
+    formItems.value = formItems.value.map((item) => {
+      if (item.name === "city") {
+        if (emitItem.value === "guangdong") {
+          return {
+            ...item,
+            options: cityOfGuangdong,
+          };
+        }
+        if (emitItem.value === "shanghai") {
+          return {
+            ...item,
+            options: cityOfShanghai,
+          };
+        }
+      }
+      return item;
+    });
+  }
+
+  if (emitItem.name === "city") {
+    formItems.value = formItems.value.map((item) => {
+      if (item.name === "region") {
+        if (emitItem.value === "guangzhou") {
+          return {
+            ...item,
+            options: regionOfGuangzhou,
+          };
+        }
+      }
+      return item;
+    });
+  }
+};
+
 const formSchema = z.object({
   name: z
     .string({ required_error: "姓名不能为空" })
@@ -244,6 +314,7 @@ const formSchema = z.object({
           :formSchema="formSchema"
           @submit="handleSubmit"
           @reset="handleReset"
+          @value-change="handleValueChange"
         />
       </template>
     </Card>
